@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropout
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropout, BatchNormalization
 
 def normalizer(image, label):
     aux = tf.cast(image, dtype=tf.float32)
@@ -36,18 +36,24 @@ model = Sequential()
 
 model.add(Conv2D(filters=8, kernel_size=(3,3), activation='relu', input_shape=(224,224,3)))
 model.add(MaxPooling2D())
+model.add(Dropout(0.25))
+model.add(BatchNormalization())
 
 model.add(Conv2D(filters=16, kernel_size=(3,3), activation='relu'))
 model.add(MaxPooling2D())
+model.add(Dropout(0.25))
+model.add(BatchNormalization())
 
 model.add(Conv2D(filters=32, kernel_size=(3,3), activation='relu'))
 model.add(MaxPooling2D())
+model.add(Dropout(0.25))
+model.add(BatchNormalization())
 
 model.add(Flatten())
 
-model.add(Dropout(0.5))
 model.add(Dense(units=64, activation='relu'))
-model.add(Dropout(0.2))
+model.add(Dropout(0.5))
+model.add(BatchNormalization())
 model.add(Dense(units=1, activation='sigmoid'))
 
 model.compile(
@@ -73,7 +79,7 @@ plt.legend()
 plt.title('Loss in Training and Validation')
 plt.show()
 
-if 'accuracy' in hist.history:  # Verifica se foi usada a métrica R²
+if 'accuracy' in hist.history:  
     plt.plot(hist.history['accuracy'], label='train')
     plt.plot(hist.history['val_accuracy'], label='valid')
     plt.xlabel('Epochs')
