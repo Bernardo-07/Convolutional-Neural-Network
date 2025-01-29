@@ -16,7 +16,7 @@ train_data = tf.keras.utils.image_dataset_from_directory(
     validation_split=0.1,  
     subset="training",     
     seed=42,               
-    image_size=(256, 256), 
+    image_size=(224, 224), 
     batch_size=32          
 )
 
@@ -25,7 +25,7 @@ valid_data = tf.keras.utils.image_dataset_from_directory(
     validation_split=0.1,  
     subset="validation",   
     seed=42,               
-    image_size=(256, 256), 
+    image_size=(224, 224), 
     batch_size=32          
 )
 
@@ -34,20 +34,25 @@ valid = valid_data.map(normalizer)
 
 model = Sequential()
 
-model.add(Conv2D(filters=8, kernel_size=(3,3), activation='relu', input_shape=(256,256,3)))
+model.add(Conv2D(filters=16, kernel_size=(3,3), activation='relu', input_shape=(224,224,3)))
+model.add(BatchNormalization())
 model.add(MaxPooling2D())
 
-model.add(Conv2D(filters=16, kernel_size=(3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+model.add(Conv2D(filters=32, kernel_size=(3,3), activation='relu'))
+model.add(BatchNormalization())
 model.add(MaxPooling2D())
 
-model.add(Conv2D(filters=32, kernel_size=(3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.01)))
+model.add(Conv2D(filters=64, kernel_size=(3,3), activation='relu'))
+model.add(BatchNormalization())
 model.add(MaxPooling2D())
+model.add(Dropout(0.5))
 
 model.add(Flatten())
 
-model.add(Dense(units=64, activation='relu'))
-model.add(Dropout(0.5))
+model.add(Dense(units=128, activation='relu'))
 model.add(BatchNormalization())
+model.add(Dropout(0.5))
+
 model.add(Dense(units=1, activation='sigmoid'))
 
 model.compile(
@@ -58,15 +63,15 @@ model.compile(
 
 print(model.summary())
 
-early_stopping = EarlyStopping(monitor='val_loss', patience=4, restore_best_weights=True)
+#early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
 
 hist = model.fit(
     train,
     batch_size=32, 
     epochs=20, 
-    validation_data=valid,
-    callbacks=[early_stopping], 
-    verbose=1
+    validation_data=valid
+    #callbacks=[early_stopping], 
+    #verbose=1
 )
 
 plt.plot(hist.history['loss'], label='train')
