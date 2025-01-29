@@ -7,9 +7,17 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dense, Flatten, Dropou
 from tensorflow.keras.callbacks import EarlyStopping
 
 def normalizer(image, label):
+    image = augmentation(image) 
     aux = tf.cast(image, dtype=tf.float32)
     image_norm = aux/255.0
     return image_norm, label
+
+augmentation = tf.keras.Sequential([
+    tf.keras.layers.RandomFlip("horizontal"),
+    tf.keras.layers.RandomRotation(0.1),
+    tf.keras.layers.RandomZoom(0.1),
+    tf.keras.layers.RandomBrightness(0.1)
+])
 
 train_data = tf.keras.utils.image_dataset_from_directory(
     'dataset/training',
@@ -68,7 +76,7 @@ print(model.summary())
 hist = model.fit(
     train,
     batch_size=32, 
-    epochs=20, 
+    epochs=30, 
     validation_data=valid
     #callbacks=[early_stopping], 
     #verbose=1
