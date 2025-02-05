@@ -10,9 +10,9 @@ import os
 import imghdr
 
 def normalizer(image, label): 
-    aux = tf.cast(image, dtype=tf.float32)
-    image_norm = aux/255.0
-    return image_norm, label
+    image = tf.cast(image, dtype=tf.float32)/255.0
+    label = tf.one_hot(label, depth=2)
+    return image, label
 
 dir = "dataset/training"
 
@@ -50,24 +50,23 @@ for class_name in os.listdir(dir):
             print(f"Erro ao carregar {img_name}: {e}")
             continue
 
-train_data = tf.keras.utils.image_dataset_from_directory(
+train_data, valid_data = tf.keras.utils.image_dataset_from_directory(
     'dataset/training',
     validation_split=0.15,  
-    subset="training",     
+    subset="both",     
     seed=42,               
     image_size=(128, 128),
     shuffle=True, 
     batch_size=32          
 )
 
-valid_data = tf.keras.utils.image_dataset_from_directory(
-    'dataset/training',
-    validation_split=0.1,  
-    subset="validation",   
-    seed=42,               
+test_data = tf.keras.utils.image_dataset_from_directory(
+    'dataset/test',                 
     image_size=(128, 128), 
     batch_size=32          
 )
+
+test = test_data.map(normalizer)
 
 train = train_data.map(normalizer)
 valid = valid_data.map(normalizer) 
@@ -97,15 +96,14 @@ model.add(Dropout(0.2))
 model.add(Flatten())
 
 model.add(Dense(units=512, activation='relu'))
-model.add(BatchNormalization())
 model.add(Dropout(0.5))
 
-model.add(Dense(units=1, activation='sigmoid'))
+model.add(Dense(units=2, activation='softmax'))
 
 
 model.compile(
-    optimizer='adam',
-    loss=tf.keras.losses.BinaryCrossentropy(),
+    optimizer='rmsprop',
+    loss=tf.keras.losses.CategoricalCrossentropy(),
     metrics=['accuracy'],
 )
 
@@ -122,8 +120,8 @@ learning_rate_reduction = ReduceLROnPlateau(
 early_stopping = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True, verbose= 0)
 
 hist = model.fit(
-    train_data,
-    validation_data=valid_data, 
+    train,
+    validation_data=valid, 
     epochs=30,  
     batch_size=32,
     shuffle=True,
@@ -147,3 +145,44 @@ if 'accuracy' in hist.history:
     plt.legend()
     plt.title('Accuracy in Training and Validation')
     plt.show()
+
+from tensorflow.keras.models import load_model
+
+model.save(os.path.join('models', 'softmax.h5'))
+
+new_model = load_model(os.path.join('models', 'softmax.h5'))
+
+loss, acc = new_model.evaluate(test, batch_size=32)
+
+print(loss)
+print(acc)
+
+y_true = []
+for images, labels in test:
+    y_true.extend(labels.numpy())  # Convertendo labels para array NumPy
+
+y_true = np.array(y_true)
+
+result = new_model.predict(test)
+
+y_pred = (result > 0.5).astype(int)
+
+import seaborn as sns
+
+matrix = tf.math.confusion_matrix(y_true, y_pred)
+
+plt.figure(figsize=(10, 7))
+sns.heatmap(
+    matrix.numpy(), 
+    annot=True, 
+    fmt='d', 
+    cmap='Blues', 
+    xticklabels=['Cat', 'Dog'], 
+    yticklabels=['Cat', 'Dog'],
+    vmin = 400
+)
+
+plt.ylabel('True Label')
+plt.xlabel('Predicted Label')
+plt.title('Confusion Matrix')
+plt.show()
